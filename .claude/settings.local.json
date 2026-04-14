@@ -9,7 +9,8 @@
       "Bash(py --version)",
       "Bash(py3 --version)",
       "Bash(where python:*)",
-      "Bash(\"C:\\\\Users\\\\HAROON TRADERS\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\python.exe\" --version)"
+      "Bash(\"C:\\\\Users\\\\HAROON TRADERS\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\python.exe\" --version)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

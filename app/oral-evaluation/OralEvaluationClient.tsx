@@ -19,391 +19,385 @@ const FEEDBACK = {
   whyMatters: 'Neglecting NOTAMs could lead to restricted airspace violations.',
 };
 
-// ─── Font tokens ──────────────────────────────────────────────────────────────
+// ─── Tokens ───────────────────────────────────────────────────────────────────
 const F = {
   display: "var(--font-bebas), 'Bebas Neue', sans-serif",
-  serif:   "var(--font-cormorant), 'Cormorant Garamond', serif",
+  serif:   "'Georgia', 'Times New Roman', serif",
   body:    "var(--font-dm), 'DM Sans', system-ui, sans-serif",
 } as const;
 
+const C = {
+  silver:  'linear-gradient(160deg,#5a5a5a 0%,#a8a8a8 18%,#e0e0e0 36%,#ffffff 50%,#e8e8e8 62%,#b8b8b8 78%,#d0d0d0 100%)',
+  orange:  'linear-gradient(135deg,#e07010 0%,#f09030 45%,#ea6800 100%)',
+  orangeH: 'linear-gradient(135deg,#f08020 0%,#ffa040 45%,#f07010 100%)',
+  // iOS 26 glass surfaces — lighter, more translucent
+  g0: 'rgba(255,255,255,0.10)',  // outer panel
+  g1: 'rgba(255,255,255,0.13)',  // cards
+  g2: 'rgba(255,255,255,0.09)',  // subtle surfaces
+  b0: 'rgba(255,255,255,0.22)',  // border bright
+  b1: 'rgba(255,255,255,0.14)',  // border mid
+  b2: 'rgba(255,255,255,0.07)',  // border faint
+  text0: 'rgba(255,255,255,0.92)',
+  text1: 'rgba(255,255,255,0.62)',
+  text2: 'rgba(255,255,255,0.38)',
+} as const;
 
-function Filters() {
+// ─── iOS 26 liquid glass SVG filter (low-scale displacement = subtle lens) ────
+function LiquidFilters() {
   return (
     <svg aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
       <defs>
-        {/* Standard panel glass */}
-        <filter id="lg" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="3" seed="8" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="16" xChannelSelector="R" yChannelSelector="G" />
+        {/* Main glass — very low scale for iOS 26 subtlety */}
+        <filter id="gMain" x="-8%" y="-8%" width="116%" height="116%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.018 0.022" numOctaves="3" seed="12" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G" result="d" />
+          <feGaussianBlur in="d" stdDeviation="0.3" />
         </filter>
-
-        {/* Small cards */}
-        <filter id="lgs" x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.02 0.028" numOctaves="2" seed="14" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="9" xChannelSelector="R" yChannelSelector="G" />
+        {/* Card glass — even softer */}
+        <filter id="gCard" x="-6%" y="-6%" width="112%" height="112%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.022 0.028" numOctaves="2" seed="7" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G" />
         </filter>
-
-        {/* iOS 26 liquid glass — stronger, higher frequency for prismatic lens effect */}
-        <filter id="ios26" x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.011" numOctaves="4" seed="22" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" result="displaced" />
-          <feGaussianBlur in="displaced" stdDeviation="0.4" />
+        {/* Textarea — softest */}
+        <filter id="gTx" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.010 0.014" numOctaves="3" seed="20" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G" result="d" />
+          <feGaussianBlur in="d" stdDeviation="0.25" />
         </filter>
       </defs>
     </svg>
   );
 }
 
-// ─── Glass factory ────────────────────────────────────────────────────────────
-function glass(id: 'lg' | 'lgs', extra: CSSProperties = {}): CSSProperties {
+// ─── iOS 26 glass surface ─────────────────────────────────────────────────────
+// Lighter bg, lower blur (12–18px), vivid border highlights
+function ios26(blur = 16, extra: CSSProperties = {}): CSSProperties {
   return {
     position: 'relative',
-    background: 'rgba(255,255,255,0.042)',
-    backdropFilter: `url(#${id}) blur(24px) saturate(1.1)`,
-    WebkitBackdropFilter: `url(#${id}) blur(24px) saturate(1.1)`,
-    border: '1px solid rgba(255,255,255,0.09)',
-    boxShadow: '0 8px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
-    borderRadius: 16,
+    background: C.g1,
+    backdropFilter: `url(#gCard) blur(${blur}px) saturate(1.9) brightness(1.12)`,
+    WebkitBackdropFilter: `url(#gCard) blur(${blur}px) saturate(1.9) brightness(1.12)`,
+    border: `1px solid ${C.b1}`,
+    boxShadow: [
+      '0 4px 24px rgba(0,0,0,0.28)',
+      'inset 0 1.5px 0 rgba(255,255,255,0.32)',
+      'inset 0 -1px 0 rgba(255,255,255,0.06)',
+      '0 1px 0 rgba(0,0,0,0.12)',
+    ].join(', '),
+    borderRadius: 20,
     overflow: 'hidden',
     ...extra,
   };
 }
 
-// Top-edge refraction shimmer
-function EdgeShimmer({ opacity = 0.15 }: { opacity?: number }) {
+// ─── Specular top edge ────────────────────────────────────────────────────────
+function TopEdge({ opacity = 0.45 }: { opacity?: number }) {
   return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: 'absolute', top: 0, left: '14%', right: '14%', height: 1,
-        background: `linear-gradient(90deg, transparent, rgba(255,255,255,${opacity}), transparent)`,
-        pointerEvents: 'none', zIndex: 1,
-      }}
-    />
+    <div aria-hidden="true" style={{
+      position: 'absolute', top: 0, left: '6%', right: '6%', height: 1,
+      background: `linear-gradient(90deg,transparent,rgba(255,255,255,${opacity * 0.5}),rgba(255,255,255,${opacity}),rgba(255,255,255,${opacity * 0.5}),transparent)`,
+      pointerEvents: 'none', zIndex: 4,
+    }} />
   );
 }
 
-// ─── Section label ────────────────────────────────────────────────────────────
+// ─── Section overline ─────────────────────────────────────────────────────────
 function Label({ children }: { children: string }) {
   return (
     <p style={{
-      margin: '0 0 8px',
-      fontFamily: F.body,
-      fontSize: 10.5,
-      fontWeight: 500,
-      letterSpacing: '0.2em',
-      textTransform: 'uppercase',
-      color: 'rgba(255,255,255,0.38)',
+      margin: '0 0 7px', fontFamily: F.body, fontSize: 10, fontWeight: 700,
+      letterSpacing: '0.20em', textTransform: 'uppercase', color: C.text2,
     }}>
       {children}
     </p>
   );
 }
 
-// ─── Feedback list row ────────────────────────────────────────────────────────
+// ─── Feedback row ─────────────────────────────────────────────────────────────
 function Row({ text, ok }: { text: string; ok: boolean }) {
   return (
-    <li style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, listStyle: 'none' }}>
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+    <li style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, listStyle: 'none' }}>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <circle cx="7" cy="7" r="5.8" stroke={ok ? 'rgba(140,210,180,0.70)' : 'rgba(240,175,80,0.70)'} strokeWidth="1.3" fill={ok ? 'rgba(100,200,150,0.10)' : 'rgba(240,175,80,0.08)'} />
         {ok
-          ? <path d="M2 6l3 3 5-5" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          : <path d="M3 3l6 6M9 3l-6 6" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+          ? <path d="M4.2 7l2 2 3.6-3.6" stroke="rgba(140,225,190,0.88)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          : <path d="M4.8 4.8l4.4 4.4M9.2 4.8l-4.4 4.4" stroke="rgba(245,185,80,0.88)" strokeWidth="1.4" strokeLinecap="round" />
         }
       </svg>
-      <span style={{ fontFamily: F.body, fontSize: 13, color: 'rgba(255,255,255,0.65)', fontWeight: 300, lineHeight: 1.5 }}>
-        {text}
-      </span>
+      <span style={{ fontFamily: F.body, fontSize: 13, color: C.text0, fontWeight: 300, lineHeight: 1.5 }}>{text}</span>
     </li>
   );
 }
 
 // ─── Button ───────────────────────────────────────────────────────────────────
-function Btn({ label, onClick, primary = false }: { label: string; onClick: () => void; primary?: boolean }) {
-  const [hover, setHover] = useState(false);
-  const [pressed, setPressed] = useState(false);
+type V = 'orange' | 'glass' | 'ghost';
+function Btn({ label, onClick, v = 'ghost' }: { label: string; onClick: () => void; v?: V }) {
+  const [ho, setHo] = useState(false);
+  const [pr, setPr] = useState(false);
+  const s: Record<V, CSSProperties> = {
+    orange: {
+      background: ho ? C.orangeH : C.orange,
+      color: '#fff',
+      border: '1px solid rgba(255,165,60,0.30)',
+      boxShadow: ho
+        ? '0 4px 20px rgba(240,110,14,0.52),inset 0 1.5px 0 rgba(255,225,170,0.28)'
+        : '0 4px 14px rgba(220,90,8,0.38),inset 0 1.5px 0 rgba(255,210,150,0.18)',
+    },
+    glass: {
+      background: ho ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.10)',
+      border: `1px solid ${ho ? C.b0 : C.b1}`,
+      color: ho ? C.text0 : C.text1,
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.20)',
+    },
+    ghost: {
+      background: ho ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${ho ? C.b2 : 'transparent'}`,
+      color: ho ? C.text1 : C.text2,
+    },
+  };
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => { setHover(false); setPressed(false); }}
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
+      onMouseEnter={() => setHo(true)}
+      onMouseLeave={() => { setHo(false); setPr(false); }}
+      onMouseDown={() => setPr(true)}
+      onMouseUp={() => setPr(false)}
       style={{
-        flex: 1,
-        height: 44,
-        borderRadius: 12,
-        fontFamily: F.body,
-        fontSize: 12.5,
-        fontWeight: 500,
-        letterSpacing: '0.06em',
-        cursor: 'pointer',
-        touchAction: 'manipulation',
-        transition: 'background 0.16s ease, border-color 0.16s ease, transform 0.1s ease',
-        transform: pressed ? 'scale(0.97)' : 'scale(1)',
-        background: primary
-          ? hover ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.10)'
-          : hover ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.035)',
-        border: primary
-          ? `1px solid ${hover ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.15)'}`
-          : `1px solid ${hover ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.06)'}`,
-        color: primary
-          ? 'rgba(255,255,255,0.9)'
-          : hover ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.38)',
+        flex: 1, height: 46, borderRadius: 14,
+        fontFamily: F.body, fontSize: 12.5, fontWeight: 600, letterSpacing: '0.06em',
+        cursor: 'pointer', touchAction: 'manipulation',
+        transform: pr ? 'scale(0.96)' : 'scale(1)',
+        transition: 'all 0.18s ease', position: 'relative', overflow: 'hidden',
+        ...s[v],
       }}
     >
+      {v === 'orange' && (
+        <span aria-hidden="true" style={{
+          position: 'absolute', top: 0, left: '15%', right: '15%', height: 1,
+          background: `rgba(255,235,200,${ho ? 0.32 : 0.16})`, pointerEvents: 'none',
+        }} />
+      )}
       {label}
     </button>
   );
 }
 
-// ─── iOS 26 Liquid Glass Textarea ─────────────────────────────────────────────
-function LiquidTextarea({
-  value, onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
+// ─── iOS 26 answer textarea ───────────────────────────────────────────────────
+function AnswerField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [focused, setFocused] = useState(false);
-
   return (
-    <div style={{ position: 'relative', marginBottom: 12 }}>
-      {/* Outer prismatic border ring — rainbow refraction on edges */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: -1,
-          borderRadius: 19,
-          background: focused
-            ? `conic-gradient(
-                from 180deg,
-                rgba(255,255,255,0.22) 0deg,
-                rgba(180,200,255,0.18) 60deg,
-                rgba(255,180,255,0.12) 120deg,
-                rgba(180,255,255,0.16) 180deg,
-                rgba(255,255,200,0.12) 240deg,
-                rgba(200,180,255,0.16) 300deg,
-                rgba(255,255,255,0.22) 360deg
-              )`
-            : 'rgba(255,255,255,0.07)',
-          transition: 'background 0.3s ease',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* Specular top highlight */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          top: 1,
-          left: '10%',
-          right: '10%',
-          height: 1,
-          background: `linear-gradient(90deg, transparent, rgba(255,255,255,${focused ? 0.28 : 0.14}), transparent)`,
-          borderRadius: '50%',
-          pointerEvents: 'none',
-          zIndex: 2,
-          transition: 'background 0.3s ease',
-        }}
-      />
-
-      {/* Specular left-edge micro-shine */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          top: '8%',
-          bottom: '8%',
-          left: 1,
-          width: 1,
-          background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.12), transparent)',
-          pointerEvents: 'none',
-          zIndex: 2,
-        }}
-      />
-
+    <div style={{ position: 'relative', marginBottom: 14 }}>
+      {/* Prismatic focus ring */}
+      <div aria-hidden="true" style={{
+        position: 'absolute', inset: -1, borderRadius: 19, pointerEvents: 'none', zIndex: 0,
+        background: focused
+          ? 'conic-gradient(from 200deg,rgba(255,255,255,0.36) 0deg,rgba(200,215,245,0.22) 90deg,rgba(230,235,255,0.28) 180deg,rgba(210,222,250,0.22) 270deg,rgba(255,255,255,0.36) 360deg)'
+          : 'rgba(255,255,255,0.10)',
+        transition: 'background 0.28s ease',
+      }} />
+      <div aria-hidden="true" style={{
+        position: 'absolute', top: 1, left: '8%', right: '8%', height: 1,
+        background: `linear-gradient(90deg,transparent,rgba(255,255,255,${focused ? 0.45 : 0.18}),transparent)`,
+        pointerEvents: 'none', zIndex: 3, transition: 'background 0.28s ease',
+      }} />
       <textarea
         id="answer-field"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={e => onChange(e.target.value)}
         placeholder="Type your answer here…"
-        rows={5}
+        rows={4}
         aria-label="Your answer"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{
-          position: 'relative',
-          zIndex: 1,
-          display: 'block',
-          width: '100%',
-          boxSizing: 'border-box',
-          resize: 'none',
-          borderRadius: 18,
-          padding: '16px 20px',
-          fontFamily: F.body,
-          fontSize: 14,
-          lineHeight: 1.65,
-          fontWeight: 300,
-          // iOS 26 liquid glass: strong blur + saturate + brightness lift
-          background: focused
-            ? 'rgba(255,255,255,0.072)'
-            : 'rgba(255,255,255,0.048)',
-          backdropFilter: `url(#ios26) blur(40px) saturate(1.6) brightness(${focused ? 1.18 : 1.08})`,
-          WebkitBackdropFilter: `url(#ios26) blur(40px) saturate(1.6) brightness(${focused ? 1.18 : 1.08})`,
-          border: 'none',
-          outline: 'none',
-          color: 'rgba(255,255,255,0.82)',
+          position: 'relative', zIndex: 1,
+          display: 'block', width: '100%', boxSizing: 'border-box',
+          resize: 'none', borderRadius: 18, padding: '14px 18px',
+          fontFamily: F.body, fontSize: 14, lineHeight: 1.68, fontWeight: 300,
+          background: focused ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.08)',
+          backdropFilter: `url(#gTx) blur(14px) saturate(2.0) brightness(${focused ? 1.18 : 1.10})`,
+          WebkitBackdropFilter: `url(#gTx) blur(14px) saturate(2.0) brightness(${focused ? 1.18 : 1.10})`,
+          border: 'none', outline: 'none',
+          color: C.text0,
           boxShadow: focused
-            ? '0 0 0 0.5px rgba(255,255,255,0.18), 0 12px 40px rgba(0,0,0,0.45), inset 0 2px 8px rgba(0,0,0,0.2), inset 0 -1px 0 rgba(255,255,255,0.06)'
-            : '0 8px 32px rgba(0,0,0,0.4), inset 0 2px 6px rgba(0,0,0,0.22)',
-          caretColor: 'rgba(255,255,255,0.6)',
-          transition: 'background 0.25s ease, box-shadow 0.25s ease, backdrop-filter 0.25s ease',
+            ? 'inset 0 2px 8px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(255,255,255,0.20)'
+            : 'inset 0 2px 6px rgba(0,0,0,0.12)',
+          caretColor: 'rgba(245,130,28,0.90)',
+          transition: 'background 0.24s ease, box-shadow 0.24s ease',
         }}
       />
     </div>
   );
 }
 
-// ─── Cockpit atmosphere ───────────────────────────────────────────────────────
-function Atmosphere() {
-  return (
-    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-      {[
-        { l: '8%',  t: '78%', w: 160, h: 80,  c: 'rgba(172,90,14,0.10)' },
-        { l: '22%', t: '84%', w: 110, h: 60,  c: 'rgba(8,24,68,0.16)'   },
-        { l: '39%', t: '79%', w: 120, h: 68,  c: 'rgba(130,68,10,0.12)' },
-        { l: '50%', t: '73%', w: 90,  h: 48,  c: 'rgba(18,44,100,0.09)' },
-        { l: '61%', t: '79%', w: 120, h: 68,  c: 'rgba(130,68,10,0.12)' },
-        { l: '78%', t: '84%', w: 110, h: 60,  c: 'rgba(8,24,68,0.16)'   },
-        { l: '92%', t: '78%', w: 160, h: 80,  c: 'rgba(172,90,14,0.10)' },
-        { l: '50%', t: '68%', w: 200, h: 60,  c: 'rgba(45,28,6,0.14)'   },
-        { l: '6%',  t: '60%', w: 90,  h: 60,  c: 'rgba(6,14,44,0.13)'   },
-        { l: '94%', t: '60%', w: 90,  h: 60,  c: 'rgba(6,14,44,0.13)'   },
-      ].map((g, i) => (
-        <div key={i} style={{
-          position: 'absolute', left: g.l, top: g.t, width: g.w, height: g.h,
-          background: `radial-gradient(ellipse, ${g.c} 0%, transparent 75%)`,
-          transform: 'translate(-50%,-50%)',
-        }} />
-      ))}
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px)',
-      }} />
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 260, background: 'linear-gradient(to bottom, rgba(0,0,3,0.94), transparent)' }} />
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 340, background: 'linear-gradient(to top, rgba(0,0,2,0.97), transparent)' }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 85% 90% at 50% 50%, transparent 55%, rgba(0,0,2,0.55) 100%)' }} />
-    </div>
-  );
-}
+// ─── Left step tracker ────────────────────────────────────────────────────────
+const STEPS: Array<{ id: Phase; num: number; title: string; sub: string }> = [
+  { id: 'question', num: 1, title: 'Question',  sub: 'Read & Answer'   },
+  { id: 'feedback', num: 2, title: 'Feedback',  sub: 'Review Results'  },
+];
 
-// ─── Phase progress dots ──────────────────────────────────────────────────────
-function PhaseDots({ phase }: { phase: Phase }) {
+function StepTracker({ phase }: { phase: Phase }) {
+  const activeIdx = STEPS.findIndex(s => s.id === phase);
+
   return (
-    <div
-      role="progressbar"
-      aria-label={phase === 'question' ? 'Step 1 of 2: Question' : 'Step 2 of 2: Feedback'}
-      style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 24 }}
-    >
-      {(['question', 'feedback'] as Phase[]).map((p) => (
-        <div
-          key={p}
-          style={{
-            width: phase === p ? 24 : 6,
-            height: 6,
-            borderRadius: 3,
-            background: phase === p
-              ? 'linear-gradient(90deg, #aaa, #e8e8e8, #fff)'
-              : 'rgba(255,255,255,0.13)',
-            transition: 'width 0.35s cubic-bezier(0.22,1,0.36,1), background 0.35s ease',
-          }}
-        />
-      ))}
+    <div style={{
+      width: 148, flexShrink: 0, padding: '36px 16px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      borderRight: `1px solid ${C.b2}`,
+    }}>
+      {/* Step list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignItems: 'center', width: '100%' }}>
+        {STEPS.map((step, i) => {
+          const done    = i < activeIdx;
+          const current = i === activeIdx;
+          const future  = i > activeIdx;
+
+          return (
+            <div key={step.id} style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                {/* Circle + connector column */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                  {/* Step circle */}
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                    background: current
+                      ? C.orange
+                      : done
+                        ? 'rgba(255,255,255,0.14)'
+                        : 'rgba(255,255,255,0.06)',
+                    border: current
+                      ? '1px solid rgba(255,165,60,0.40)'
+                      : done
+                        ? `1px solid ${C.b1}`
+                        : `1px solid ${C.b2}`,
+                    boxShadow: current
+                      ? '0 0 18px rgba(235,100,10,0.45), 0 4px 12px rgba(220,90,8,0.30), inset 0 1.5px 0 rgba(255,210,140,0.28)'
+                      : done
+                        ? 'inset 0 1px 0 rgba(255,255,255,0.18)'
+                        : 'none',
+                    transition: 'all 0.38s cubic-bezier(0.22,1,0.36,1)',
+                  }}>
+                    {done ? (
+                      /* Checkmark */
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                        <path d="M3 6.5l2.5 2.5 4.5-4.5" stroke="rgba(255,255,255,0.75)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : (
+                      <span style={{
+                        fontFamily: F.display, fontSize: 15, fontWeight: 400, letterSpacing: '0.04em',
+                        color: current ? '#fff' : C.text2,
+                        lineHeight: 1, userSelect: 'none',
+                        transition: 'color 0.38s ease',
+                      }}>
+                        {step.num}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Connector line — only between items */}
+                  {i < STEPS.length - 1 && (
+                    <div style={{
+                      width: 1.5, height: 40, marginTop: 3, marginBottom: 3,
+                      background: done
+                        ? 'linear-gradient(to bottom, rgba(255,255,255,0.22), rgba(255,255,255,0.10))'
+                        : 'rgba(255,255,255,0.08)',
+                      borderRadius: 1,
+                      transition: 'background 0.38s ease',
+                    }} />
+                  )}
+                </div>
+
+                {/* Step label */}
+                <div style={{ paddingTop: 5, paddingBottom: i < STEPS.length - 1 ? 0 : 0 }}>
+                  <p style={{
+                    margin: '0 0 2px', fontFamily: F.body, fontSize: 13, fontWeight: current ? 600 : 400,
+                    color: current ? C.text0 : done ? C.text1 : C.text2,
+                    transition: 'color 0.38s ease',
+                  }}>
+                    {step.title}
+                  </p>
+                  <p style={{
+                    margin: 0, fontFamily: F.body, fontSize: 10.5, fontWeight: 400,
+                    color: current ? C.text1 : C.text2,
+                    transition: 'color 0.38s ease',
+                  }}>
+                    {step.sub}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Difficulty badge at bottom */}
+      <div style={{ marginTop: 'auto', paddingTop: 36, display: 'flex', justifyContent: 'center' }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '5px 10px', borderRadius: 8,
+          background: 'rgba(255,255,255,0.07)', border: `1px solid ${C.b2}`,
+        }}>
+          <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(240,175,60,0.75)' }} />
+          <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.text2 }}>
+            Intermediate
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
 
 // ─── Question phase ───────────────────────────────────────────────────────────
-function QuestionPhase({
-  answer, setAnswer, onSubmit, onSkip, onMark,
-}: {
+function QuestionPhase({ answer, setAnswer, onSubmit, onSkip, onMark }: {
   answer: string; setAnswer: (v: string) => void;
   onSubmit: () => void; onSkip: () => void; onMark: () => void;
 }) {
   return (
     <div>
-      <PhaseDots phase="question" />
-
-      {/* ORAL EVALUATION — big Bebas Neue silver gradient */}
-      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+      {/* Heading */}
+      <div style={{ marginBottom: 22 }}>
         <h1 style={{
-          margin: 0,
-          fontFamily: F.display,
-          fontSize: 'clamp(52px, 9vw, 82px)',
-          fontWeight: 400,
-          letterSpacing: '0.12em',
-          lineHeight: 1,
-          background: `linear-gradient(
-            160deg,
-            #7a7a7a   0%,
-            #b8b8b8  18%,
-            #e8e8e8  32%,
-            #ffffff  46%,
-            #f0f0f0  58%,
-            #c8c8c8  72%,
-            #8a8a8a  85%,
-            #d4d4d4 100%
-          )`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          margin: '0 0 8px', fontFamily: F.display,
+          fontSize: 'clamp(58px, 9vw, 96px)', fontWeight: 400, letterSpacing: '0.10em', lineHeight: 0.95,
+          color: 'rgba(255,255,255,0.96)',
+          textShadow: '0 2px 24px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.20)',
         }}>
           Oral Evaluation
         </h1>
-
-        {/* Topic subtitle — Cormorant, lighter */}
         <p style={{
-          margin: '10px 0 0',
-          fontFamily: F.serif,
-          fontSize: 'clamp(17px, 2.8vw, 22px)',
-          fontWeight: 300,
-          letterSpacing: '0.06em',
-          color: 'rgba(255,255,255,0.45)',
+          margin: 0,
+          fontFamily: "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+          fontSize: 'clamp(15px, 2.2vw, 20px)', fontWeight: 400, fontStyle: 'italic', letterSpacing: '0.04em',
+          color: 'rgba(255,165,55,0.95)',
+          textShadow: '0 1px 12px rgba(215,92,8,0.50), 0 0 32px rgba(240,110,10,0.25)',
         }}>
           {QUESTION.topic}
         </p>
       </div>
 
       {/* Question card */}
-      <div style={glass('lg', { marginBottom: 12 })}>
-        <EdgeShimmer opacity={0.14} />
-        <div style={{ padding: '20px 28px' }}>
-          <label
-            htmlFor="answer-field"
-            style={{
-              display: 'block',
-              fontFamily: F.body,
-              fontSize: 14,
-              lineHeight: 1.72,
-              color: 'rgba(255,255,255,0.72)',
-              textAlign: 'center',
-              fontWeight: 300,
-            }}
-          >
+      <div style={ios26(14, { marginBottom: 12 })}>
+        <TopEdge opacity={0.42} />
+        <div style={{ padding: '20px 24px' }}>
+          <label htmlFor="answer-field" style={{
+            display: 'block', fontFamily: F.body, fontSize: 14, lineHeight: 1.76,
+            color: C.text0, fontWeight: 300,
+          }}>
             {QUESTION.text}
           </label>
         </div>
       </div>
 
-      {/* iOS 26 liquid glass textarea */}
-      <LiquidTextarea value={answer} onChange={setAnswer} />
+      <AnswerField value={answer} onChange={setAnswer} />
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <Btn label="Submit" onClick={onSubmit} primary />
-        <Btn label="Skip" onClick={onSkip} />
-        <Btn label="Mark for Review" onClick={onMark} />
+        <Btn label="Submit" onClick={onSubmit} v="orange" />
+        <Btn label="Skip"   onClick={onSkip}   v="ghost"  />
+        <Btn label="Mark for Review" onClick={onMark} v="glass" />
       </div>
     </div>
   );
@@ -413,74 +407,52 @@ function QuestionPhase({
 function FeedbackPhase({ onContinue, onReviewLater }: { onContinue: () => void; onReviewLater: () => void }) {
   return (
     <div>
-      <PhaseDots phase="feedback" />
-
-      {/* Score heading */}
-      <div style={{ textAlign: 'center', marginBottom: 20 }}>
-        <p style={{
-          margin: '0 0 8px',
-          fontFamily: F.body,
-          fontSize: 10,
-          fontWeight: 500,
-          letterSpacing: '0.28em',
-          textTransform: 'uppercase',
-          color: 'rgba(255,255,255,0.32)',
-        }}>
+      <div style={{ marginBottom: 18 }}>
+        <p style={{ margin: '0 0 5px', fontFamily: F.body, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.28em', textTransform: 'uppercase', color: C.text2 }}>
           Your Score
         </p>
         <h1 style={{
-          margin: 0,
-          fontFamily: F.display,
-          fontSize: 'clamp(36px, 6vw, 56px)',
-          fontWeight: 400,
-          letterSpacing: '0.06em',
-          lineHeight: 1.1,
-          background: 'linear-gradient(135deg, #c8781a 0%, #f0aa3c 28%, #f5c060 55%, #e09a2a 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          margin: 0, fontFamily: F.display,
+          fontSize: 'clamp(34px, 5vw, 54px)', fontWeight: 400, letterSpacing: '0.06em', lineHeight: 1.1,
+          color: 'rgba(255,255,255,0.96)',
+          textShadow: '0 2px 20px rgba(0,0,0,0.50), 0 1px 0 rgba(255,255,255,0.18)',
         }}>
           {FEEDBACK.score} — {FEEDBACK.label}
         </h1>
       </div>
 
-      {/* Covered / Missed */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <div style={glass('lgs', { padding: '16px 18px' })}>
-          <EdgeShimmer opacity={0.11} />
-          <Label>What You Covered</Label>
-          <ul style={{ margin: 0, padding: 0 }}>
-            {FEEDBACK.covered.map((t) => <Row key={t} text={t} ok={true} />)}
-          </ul>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        <div style={ios26(12, { padding: '15px 17px' })}>
+          <TopEdge opacity={0.38} />
+          <Label>Covered</Label>
+          <ul style={{ margin: 0, padding: 0 }}>{FEEDBACK.covered.map(t => <Row key={t} text={t} ok />)}</ul>
         </div>
-        <div style={glass('lgs', { padding: '16px 18px' })}>
-          <EdgeShimmer opacity={0.11} />
-          <Label>What You Missed</Label>
-          <ul style={{ margin: 0, padding: 0 }}>
-            {FEEDBACK.missed.map((t) => <Row key={t} text={t} ok={false} />)}
-          </ul>
+        <div style={ios26(12, { padding: '15px 17px' })}>
+          <TopEdge opacity={0.38} />
+          <Label>Missed</Label>
+          <ul style={{ margin: 0, padding: 0 }}>{FEEDBACK.missed.map(t => <Row key={t} text={t} ok={false} />)}</ul>
         </div>
       </div>
 
-      <div style={glass('lgs', { padding: '16px 20px', marginBottom: 8 })}>
-        <EdgeShimmer opacity={0.11} />
+      <div style={ios26(12, { padding: '15px 20px', marginBottom: 10 })}>
+        <TopEdge opacity={0.38} />
         <Label>Stronger Answer</Label>
-        <p style={{ margin: 0, fontFamily: F.body, fontSize: 13.5, lineHeight: 1.7, color: 'rgba(255,255,255,0.62)', fontWeight: 300 }}>
+        <p style={{ margin: 0, fontFamily: F.body, fontSize: 13.5, lineHeight: 1.74, color: C.text1, fontWeight: 300 }}>
           {FEEDBACK.strongerAnswer}
         </p>
       </div>
 
-      <div style={glass('lgs', { padding: '16px 20px', marginBottom: 14 })}>
-        <EdgeShimmer opacity={0.11} />
+      <div style={ios26(12, { padding: '15px 20px', marginBottom: 16 })}>
+        <TopEdge opacity={0.38} />
         <Label>Why This Matters</Label>
-        <p style={{ margin: 0, fontFamily: F.body, fontSize: 13.5, lineHeight: 1.7, color: 'rgba(255,255,255,0.62)', fontWeight: 300 }}>
+        <p style={{ margin: 0, fontFamily: F.body, fontSize: 13.5, lineHeight: 1.74, color: C.text1, fontWeight: 300 }}>
           {FEEDBACK.whyMatters}
         </p>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <Btn label="Continue" onClick={onContinue} primary />
-        <Btn label="Review Later" onClick={onReviewLater} />
+        <Btn label="Continue"     onClick={onContinue}    v="orange" />
+        <Btn label="Review Later" onClick={onReviewLater} v="glass"  />
       </div>
     </div>
   );
@@ -488,10 +460,10 @@ function FeedbackPhase({ onContinue, onReviewLater }: { onContinue: () => void; 
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function OralEvaluationClient() {
-  const [phase, setPhase] = useState<Phase>('question');
+  const [phase, setPhase]   = useState<Phase>('question');
   const [answer, setAnswer] = useState('');
   const [mounted, setMounted] = useState(false);
-  const [fading, setFading] = useState(false);
+  const [fading, setFading]   = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 80);
@@ -500,72 +472,98 @@ export default function OralEvaluationClient() {
 
   const go = (fn: () => void) => {
     setFading(true);
-    setTimeout(() => { fn(); setFading(false); }, 300);
+    setTimeout(() => { fn(); setFading(false); }, 260);
   };
 
   return (
     <>
       <style>{`
-        ::placeholder { color: rgba(255,255,255,0.2); font-family: var(--font-dm), 'DM Sans', sans-serif; }
+        ::placeholder { color: rgba(255,255,255,0.22); font-family: var(--font-dm),'DM Sans',sans-serif; }
         @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+          *,*::before,*::after { animation-duration:0.01ms!important; transition-duration:0.01ms!important; }
         }
       `}</style>
 
-      <Filters />
+      <LiquidFilters />
 
+      {/* ── Viewport ─────────────────────────────────────────────────────── */}
       <div style={{
-        minHeight: '100dvh',
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        position: 'relative',
+        minHeight: '100dvh', width: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', position: 'relative', padding: '24px',
+        // Lighter overlays — let the background image breathe more
         backgroundImage: `
-          radial-gradient(ellipse 90% 60% at 50% 96%, rgba(24,14,4,0.95) 0%, transparent 70%),
-          radial-gradient(ellipse 50% 35% at 15% 78%, rgba(5,12,38,0.68) 0%, transparent 60%),
-          radial-gradient(ellipse 50% 35% at 85% 78%, rgba(5,12,38,0.68) 0%, transparent 60%),
-          radial-gradient(ellipse 30% 22% at 50% 70%, rgba(48,28,6,0.44) 0%, transparent 68%),
-          linear-gradient(180deg, rgba(1,1,4,0.55) 0%, rgba(2,4,7,0.55) 35%, rgba(3,4,9,0.55) 65%, rgba(2,2,3,0.55) 100%),
+          radial-gradient(ellipse 60% 50% at 50% 100%, rgba(18,10,3,0.70) 0%, transparent 65%),
+          radial-gradient(ellipse 45% 30% at 10% 80%,  rgba(4,10,32,0.45) 0%, transparent 55%),
+          radial-gradient(ellipse 45% 30% at 90% 80%,  rgba(4,10,32,0.45) 0%, transparent 55%),
+          linear-gradient(180deg, rgba(0,0,2,0.30) 0%, rgba(1,3,6,0.30) 100%),
           url('/wmremove-transformed.png')
         `,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover', backgroundPosition: 'center',
       }}>
-        <Atmosphere />
+        {/* Fine scanline grain */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.018) 2px,rgba(0,0,0,0.018) 3px)',
+          zIndex: 1,
+        }} />
 
+        {/* ── OUTER GLASS PANEL ──────────────────────────────────────────── */}
         <div style={{
-          position: 'relative',
-          zIndex: 10,
-          width: '100%',
-          maxWidth: 640,
-          padding: '0 28px',
+          position: 'relative', zIndex: 10,
+          width: '100%', maxWidth: 860,
           opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0px)' : 'translateY(22px)',
-          transition: 'opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1)',
+          transform: mounted ? 'translateY(0) scale(1)' : 'translateY(22px) scale(0.98)',
+          transition: 'opacity 0.70s cubic-bezier(0.22,1,0.36,1), transform 0.70s cubic-bezier(0.22,1,0.36,1)',
+
+          // iOS 26 outer panel — lighter, vivid specular, lower blur
+          background: C.g0,
+          backdropFilter: `url(#gMain) blur(20px) saturate(2.0) brightness(1.15)`,
+          WebkitBackdropFilter: `url(#gMain) blur(20px) saturate(2.0) brightness(1.15)`,
+          borderRadius: 28,
+          border: `1px solid ${C.b1}`,
+          boxShadow: [
+            '0 20px 60px rgba(0,0,0,0.52)',
+            '0 1px 0 rgba(255,255,255,0.30)',           // top chrome
+            'inset 0 1.5px 0 rgba(255,255,255,0.28)',   // inner top highlight
+            'inset 0 -1px 0 rgba(255,255,255,0.05)',
+            '0 0 0 0.5px rgba(255,255,255,0.08)',
+          ].join(', '),
+          display: 'flex',
+          overflow: 'hidden',
         }}>
-          <div style={{
-            opacity: fading ? 0 : 1,
-            transform: fading ? 'translateY(5px)' : 'translateY(0px)',
-            transition: 'opacity 0.3s ease, transform 0.3s ease',
-          }}>
-            {phase === 'question' ? (
-              <QuestionPhase
-                answer={answer}
-                setAnswer={setAnswer}
-                onSubmit={() => go(() => setPhase('feedback'))}
-                onSkip={() => go(() => setAnswer(''))}
-                onMark={() => go(() => {})}
-              />
-            ) : (
-              <FeedbackPhase
-                onContinue={() => go(() => { setPhase('question'); setAnswer(''); })}
-                onReviewLater={() => go(() => { setPhase('question'); setAnswer(''); })}
-              />
-            )}
-          </div>
+          {/* Panel top-edge shimmer */}
+          <div aria-hidden="true" style={{
+            position: 'absolute', top: 0, left: '4%', right: '4%', height: 1.5,
+            background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.22),rgba(255,255,255,0.50),rgba(255,255,255,0.22),transparent)',
+            pointerEvents: 'none', zIndex: 30,
+          }} />
+
+          {/* ── LEFT: STEP TRACKER ───────────────────────────────────────── */}
+          <StepTracker phase={phase} />
+
+          {/* ── RIGHT: EVAL CONTENT ──────────────────────────────────────── */}
+          <main style={{ flex: 1, padding: '36px 36px 36px 28px', minWidth: 0, overflow: 'auto' }}>
+            <div style={{
+              opacity: fading ? 0 : 1,
+              transform: fading ? 'translateY(4px)' : 'translateY(0)',
+              transition: 'opacity 0.26s ease, transform 0.26s ease',
+            }}>
+              {phase === 'question' ? (
+                <QuestionPhase
+                  answer={answer} setAnswer={setAnswer}
+                  onSubmit={() => go(() => setPhase('feedback'))}
+                  onSkip={() => go(() => setAnswer(''))}
+                  onMark={() => go(() => {})}
+                />
+              ) : (
+                <FeedbackPhase
+                  onContinue={() => go(() => { setPhase('question'); setAnswer(''); })}
+                  onReviewLater={() => go(() => { setPhase('question'); setAnswer(''); })}
+                />
+              )}
+            </div>
+          </main>
         </div>
       </div>
     </>
